@@ -64,6 +64,10 @@ const userLocalStore = create<UserState>()(
     }),
     {
       name: 'user-storage',
+      partialize: state => ({
+        user: state.user,
+        isLoggedIn: state.isLoggedIn,
+      }),
     }
   )
 );

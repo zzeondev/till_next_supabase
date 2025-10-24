@@ -14,6 +14,7 @@ import { useState } from 'react';
 const Postmanager = () => {
   // 선택된 사용자 정보
   const { selectedUserId } = useUserSelection();
+
   // 게시글 목록을 가져옴
   const {
     data: posts,
@@ -21,7 +22,7 @@ const Postmanager = () => {
     error,
   } = usePosts(selectedUserId || undefined);
 
-  // Mutation 훅들
+  // Mutaion 훅들
   const createPostMutation = useCreatePost();
   const updatePostMutation = useUpdatePost();
   const deletePostMutation = useDeletePost();
@@ -49,7 +50,7 @@ const Postmanager = () => {
       setNewPost({ title: '', body: '' });
       setIsCreating(false);
     } catch (error) {
-      console.log('새 글 등록 실패:', error);
+      console.log('새글 등록 실패:', error);
     }
   };
 
@@ -71,19 +72,19 @@ const Postmanager = () => {
       setEditPost({ title: '', body: '' });
       setEditingId(null);
     } catch (error) {
-      console.log('수정에 실패했습니다 : ', error);
+      console.log('수정에 실패했습니다:', error);
     }
   };
 
   // 게시글 삭제 처리
   const handleDeletePost = async (id: number) => {
-    if (!confirm('게시글을 삭제하시겠습니까?')) {
+    if (!confirm('게시글 삭제할래 ? ')) {
       return;
     }
     try {
       await deletePostMutation.mutateAsync(id);
     } catch (error) {
-      console.log('삭제 실패 : ', error);
+      console.log('삭제 실패: ', error);
     }
   };
 
@@ -92,7 +93,6 @@ const Postmanager = () => {
     setEditingId(post.id);
     setEditPost({ title: post.title, body: post.body });
   };
-
   // 게시글 편집 취소
   const cancelEdit = () => {
     setEditingId(null);

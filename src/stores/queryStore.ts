@@ -1,10 +1,10 @@
-// React Query 의 상태를 Zustand 에서 관리하기 위한 스토어
+// React Query의 상태를 Zustand 에서 관리하기 위한 스토어
 
 import { QueryState } from '@/types/types';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-// 1. 타입 정의
+// 1 단계 타입 정의
 // interface QueryState {
 //   // State
 //   selectedUserId: number | null; // 현재 선택된 사용자 ID
@@ -13,10 +13,11 @@ import { persist } from 'zustand/middleware';
 //   setSelectedUserId: (userId: number | null) => void; // 선택된 사용자 ID 설정
 //   setSelectedPostId: (postId: number | null) => void; // 선택된 게시글 ID 설정
 // }
+
 // 2. localStorage 로 생성
 const queryLocalState = create<QueryState>()(
   persist(
-    (set, get) => ({
+    set => ({
       // 초기 state 설정
       selectedUserId: null, // 처음에 선택된 사용자 ID 없음
       selectedPostId: null, // 처음에 선택된 게시글 ID 없음

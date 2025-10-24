@@ -1,10 +1,9 @@
 // 테스트 컴포넌트
 'use client';
-
 import { usePrefetchQuery } from '@/hooks/useQueryIntegration';
 import { useState } from 'react';
-import UsersList from './UsersList';
 import UserDetail from './UserDetail';
+import UsersList from './UsersList';
 import Postmanager from './Postmanager';
 
 function ReactQueryDemo() {

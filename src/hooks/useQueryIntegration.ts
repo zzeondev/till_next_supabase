@@ -1,10 +1,11 @@
-// React Query 와 Zustand 통합 훅
+// React Query 와  Zustand 통합 훅
 
 import { fetchPost, fetchPosts, fetchUser } from '@/lib/api';
 import { useQueryStore } from '@/stores/queryStore';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { error } from 'console';
 
-// 선택된 사용자 정보를 가져온느 훅
+// 선택된 사용자 정보를 가져오는 훅
 export function useSelectedUser() {
   // 사용자 정보를 zustand 로 관리
   const { selectedUserId } = useQueryStore();
@@ -25,7 +26,7 @@ export function useSelectedPost() {
 
   return useQuery({
     queryKey: ['posts', selectedPostId],
-    queryFn: () => fetchUser(selectedPostId!),
+    queryFn: () => fetchPost(selectedPostId!),
     enabled: !!selectedPostId,
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
@@ -55,25 +56,26 @@ export function useUserSelection() {
 
 // 쿼리 프리패치를 위한 훅
 // - 사용자가 특정 데이터를 필요로 할 것이라고 예상해서
-// - 미리 데이터를 가져와서 캐시에 저장하는 프리패치 기능
+// - 미리 데이터를 가져와서 캐시에 저장하는 프리패치 기능용 훅
 export function usePrefetchQuery() {
-  // React Query 의 전역 캐시(useQuery, useMutation) 를 관리함
+  // React Query 의 전역 캐시(useQuery, useMutation) 를 관리함.
   const queryClient = useQueryClient();
   return {
-    // 1. 사용자 정보를 미리 캐시에 보관함 (프리패치)
+    // 프리패치할 것들
+    // 1. 사용자 정보를 미리 캐시에 보관함
     prefetchUser: (userId: number) => {
       queryClient.prefetchQuery({
         queryKey: ['users', userId],
         queryFn: () => fetchUser(userId),
-        staleTime: 5 * 60 * 1000, // 5분 stale 상태
+        staleTime: 5 * 60 * 1000, // 5분 statle 상태
       });
     },
-    // 2. 사용자의 게시글을 미리 캐시에 보관함
+    // 2. 사용자의 게시글을 미리 캐시에 보관함.
     prefetchUserPosts: (userId: number) => {
       queryClient.prefetchQuery({
         queryKey: ['posts', 'user', userId],
         queryFn: () => fetchPosts(userId),
-        staleTime: 2 * 60 * 1000, // 2분 stale 상태
+        staleTime: 2 * 60 * 1000, // 2분 statle 상태
       });
     },
     // 3. 게시글 정보 프리패치

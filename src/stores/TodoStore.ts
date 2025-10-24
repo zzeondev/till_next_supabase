@@ -143,7 +143,7 @@ const todoLocalState = create<TodoState>()(
     {
       name: 'todo-storage', // 로컬스토리지에 저장하는 이름(키명)
       // 모두 저장할 이유가 없고 내가 선별해서 저장하고 싶다면?
-      // 새로고침시 filter 는 "all" 이었으면 좋겠다.
+      // 새로 고침시 filter 는 "all" 이었으면 좋겠다.
       partialize: state => ({ todos: state.todos }),
     }
   )
@@ -162,6 +162,7 @@ export const useTodoStore = () => {
     clearCompleted,
     getFilteredTodos,
   } = todoLocalState();
+
   return {
     todos,
     filter,

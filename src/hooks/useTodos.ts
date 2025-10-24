@@ -4,36 +4,35 @@ import { fetchTodos, Todo } from '@/lib/api';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { error } from 'console';
 
-// 할일 목록 가져오기
+// 할일 목록 가져오기 훅
 export function useTodos(userId?: number) {
   return useQuery({
     queryKey: userId ? ['todos', 'user', userId] : ['todos'],
     queryFn: () => fetchTodos(userId),
-    staleTime: 1 * 60 * 1000, // 1분간은 호출을 막는다. 즉 fresh 유지
-    gcTime: 5 * 60 * 1000, // 5분간 캐시를 유지함
+    staleTime: 1 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
   });
 }
 
 // 완료 상태로 할일을 필터링 하는 훅
-export function useTodaysByStatus(userId: number, completed: boolean) {
+export function useTodaysByStatus(userId?: number, completed?: boolean) {
   return useQuery({
     queryKey: ['todos', 'user', userId, 'status', completed],
     queryFn: async () => {
       const todos = await fetchTodos(userId);
-      // 환료 상태가 지정된 경우 필터링
-      // completed === true : 완료
-      // completed === false : 미완료
-      // completed === undefined : 모두
+      // 완료 상태가 지정된 경우 필터링
+      // complted === true :  완료
+      // complted === false :  미완료
+      // complted === undefiend :  모두다
       if (completed !== undefined) {
         return todos.filter(todo => todo.completed === completed);
       }
       return todos;
     },
-    staleTime: 1 * 60 * 1000, // 1분간은 호출을 막는다. 즉 fresh 유지
-    gcTime: 5 * 60 * 1000, // 5분간 캐시를 유지함
+    staleTime: 1 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
   });
 }
-
 // 할일 통계 정보를 가져오는 훅
 export function useTodoStats(userId?: number) {
   const todosQuery = useTodos(userId);
@@ -62,7 +61,7 @@ export function useCreateTodo() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (todo: Omit<Todo, 'id'>) => {
-      // 실제 API 테스트 못하므로 데모용
+      // 실제 API 테스트 못하므로 데모용으로
       await new Promise(resolve => setTimeout(resolve, 1000));
       return { ...todo, id: Math.random() * 1000 };
     },
@@ -90,7 +89,7 @@ export function useUpdateTodo() {
       id: number;
       updates: Partial<Todo>;
     }) => {
-      // 실제 API 테스트 못하므로 데모용
+      // 실제 API 테스트 못하므로 데모용으로
       await new Promise(resolve => setTimeout(resolve, 1000));
       return { id, ...updates };
     },
@@ -113,13 +112,13 @@ export function useDeleteTodo() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: number) => {
-      // 실제 API 테스트 못하므로 데모용
+      // 실제 API 테스트 못하므로 데모용으로
       await new Promise(resolve => setTimeout(resolve, 300));
       return id;
     },
-    onSuccess: deleteId => {
+    onSuccess: deletedId => {
       // 해당 할일 쿼리를 무효화
-      queryClient.invalidateQueries({ queryKey: ['todos', deleteId] });
+      queryClient.invalidateQueries({ queryKey: ['todos', deletedId] });
       queryClient.invalidateQueries({ queryKey: ['todos'] });
     },
     onError: error => {
