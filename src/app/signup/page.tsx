@@ -12,16 +12,15 @@ function SignUp() {
 
   // Mutation Hook 활용하기
   // 1. 이메일 mutation 훅
-  const { mutate, isPending, isError } = useSignUp();
+  const { mutate, isPending } = useSignUp();
 
   // 회원가입 버튼 클릭처리
   const handleSignUpClick = () => {
     if (!email.trim()) return;
     if (!password.trim()) return;
     // supabase 회원가입 처리 코드
-    mutate({ email, password });
+    mutate({ email: email, password: password });
   };
-
   return (
     <div className='flex flex-col gap-8'>
       <div className='text-xl font-bold'>회원가입</div>
@@ -47,7 +46,7 @@ function SignUp() {
           className='w-full'
           onClick={handleSignUpClick}
         >
-          {isPending ? '회원등록중..' : '회원가입'}
+          {isPending ? '회원등록중...' : '회원가입'}
         </Button>
       </div>
       <div>
