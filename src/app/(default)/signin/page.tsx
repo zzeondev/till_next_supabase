@@ -29,14 +29,13 @@ function SignIn() {
     if (!email.trim()) return;
     if (!password.trim()) return;
     // 이메일을 이용해서 로그인 진행
-    signInPassword({ email, password });
+    signInPassword({ email: email, password: password });
   };
 
   // 카카오 로그인
   const { mutate: signInWithKakao, isPending: isPendingKakao } =
     useSignInWithKakao({
       onError: error => {
-        setPassword('');
         // Sonner 로 띄우기
         // 한글 메시지로 교체
         const message = getErrorMessage(error);
@@ -52,7 +51,6 @@ function SignIn() {
   const { mutate: signInWithGoogle, isPending: isPendingGoogle } =
     useSignInWithGoogle({
       onError: error => {
-        setPassword('');
         // Sonner 로 띄우기
         // 한글 메시지로 교체
         const message = getErrorMessage(error);
@@ -61,7 +59,7 @@ function SignIn() {
     });
 
   const handleSignInWithGoogle = () => {
-    signInWithGoogle('google');
+    signInWithKakao('google');
   };
 
   return (
@@ -94,11 +92,10 @@ function SignIn() {
         >
           로그인
         </Button>
-
         {/* 카카오 소셜 로그인 */}
         <Button
-          onClick={handleSignInWithKakao}
           className='w-full cursor-pointer'
+          onClick={handleSignInWithKakao}
           disabled={isPendingKakao}
         >
           카카오 계정 로그인
@@ -106,19 +103,25 @@ function SignIn() {
 
         {/* 구글 소셜 로그인 */}
         <Button
-          onClick={handleSignInWithGoogle}
           className='w-full cursor-pointer'
+          onClick={handleSignInWithGoogle}
           disabled={isPendingGoogle}
         >
           구글 계정 로그인
         </Button>
       </div>
-      <div>
+      <div className='flex flex-col gap-2'>
         <Link
-          href={'/signup'}
           className='text-muted-foreground hover:underline'
+          href={'/signup'}
         >
           계정이 없으시다면? 회원가입
+        </Link>
+        <Link
+          className='text-muted-foreground hover:underline'
+          href={'/forget-password'}
+        >
+          비밀번호를 잊으셨나요?
         </Link>
       </div>
     </div>

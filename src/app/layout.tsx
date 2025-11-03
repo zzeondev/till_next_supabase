@@ -40,6 +40,7 @@ export default function RootLayout({
         <div className='flex min-h-[100vh] flex-col'>
           {/* 컴포넌트 배치 */}
           <ToastProvider />
+
           <QueryProvider>
             <SessionProvider>
               <header className='h-15 border-b'>
@@ -72,7 +73,7 @@ export default function RootLayout({
                 {children}
               </main>
               <footer className='text-muted-foreground border-t py-10 text-center'>
-                @zzeondev
+                @devgeact
               </footer>
             </SessionProvider>
           </QueryProvider>
