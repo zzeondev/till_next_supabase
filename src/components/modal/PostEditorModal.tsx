@@ -24,7 +24,7 @@ export default function PostEditorModal() {
   const openAlertModal = useOpenAlertModal();
 
   const { isOpen, close } = usePostEdiotorModal();
-  // 글등록 mutation 을 사용함
+  // 글등록 mutation 을 사용함.
   const { mutate: createPost, isPending: isCreatePostPending } = useCreatePost({
     onSuccess: () => {
       close();
@@ -40,7 +40,7 @@ export default function PostEditorModal() {
   const [content, setContent] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // 이미지 Input 태그 참고
+  // 이미지 Input 태그 참조
   const fileInputRef = useRef<HTMLInputElement>(null);
   // 이미지 미리보기 내용들
   const [images, setImages] = useState<ImageFile[]>([]);
@@ -69,7 +69,7 @@ export default function PostEditorModal() {
 
   const handleCloseModal = () => {
     if (content !== '' || images.length !== 0) {
-      // 안내창을 띄워서 확인 후 닫기 실행 처리
+      // 안내창을 띄워서 확인후 닫기 실행처리
       openAlertModal({
         title: '포스트 작성이 완료되지 않았습니다.',
         description: '화면에서 나가면 작성중이던 내용이 사라집니다.',
@@ -86,14 +86,13 @@ export default function PostEditorModal() {
   };
 
   // 실제 포스트 등록하기
-
   const handleCreatePost = () => {
     if (content.trim() === '') return;
     // createPost(content);
     createPost({
       content: content,
       userId: session!.user.id,
-      // 파일만 추출해주기
+      // 파일만 추출해 주기
       images: images.map(item => item.file),
     });
   };

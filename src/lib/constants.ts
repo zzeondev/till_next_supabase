@@ -6,6 +6,12 @@ export const QUERY_KEYS = {
     list: ['profile', 'list'],
     byId: (userId: string) => ['profile', 'byId', userId],
   },
+  // 포스트 useQuery 키 생성 및 관리
+  posts: {
+    all: ['posts'],
+    list: ['posts', 'list'],
+    byId: (postsId: string) => ['posts', 'byId', postsId],
+  },
 };
 
 // 버킷 이름 : Supabase Storage

@@ -826,6 +826,207 @@ npx supabase login
 npm run generate-types
 ```
 
+### 7.2. API 생성
+
+- `/src/apis/post.ts` 변경
+
+```ts
+// 5. 포스트 목록 조회
+export async function fetchPosts() {
+  const { data, error } = await supabase
+    .from('posts')
+    .select('*, author: profiles!author_id(*)')
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data;
+}
+```
+
+### 7.3. Query 생성을 위한 `키 팩토링` 작성
+
+- `/src/lib/constants.ts` 추가
+
+```ts
+// 쿼리키 픽토링 상수
+export const QUERY_KEYS = {
+  // 프로필 useQuery 키 생성 및 관리
+  profile: {
+    all: ['profile'],
+    list: ['profile', 'list'],
+    byId: (userId: string) => ['profile', 'byId', userId],
+  },
+  // 포스트 useQuery 키 생성 및 관리
+  posts: {
+    all: ['posts'],
+    list: ['posts', 'list'],
+    byId: (postsId: string) => ['posts', 'byId', postsId],
+  },
+};
+
+// 버킷 이름 : Supabase Storage
+export const BUCKET_NAME = 'uploads';
+```
+
+### 7.4. hook 생성하기
+
+- `/src/hooks/queries/usePostsData.ts` 파일 생성
+
+```ts
+import { fetchPosts } from '@/apis/post';
+import { QUERY_KEYS } from '@/lib/constants';
+import { useQuery } from '@tanstack/react-query';
+
+export function usePostsData() {
+  return useQuery({
+    queryKey: QUERY_KEYS.posts.list,
+    queryFn: () => fetchPosts(),
+  });
+}
+```
+
+### 7.5. 오류발생 표현 공용컴포넌트 만들기
+
+- `/src/components/FallBack.tsx` 파일 생성
+
+```tsx
+import { TriangleAlertIcon } from 'lucide-react';
+
+export default function FallBack() {
+  return (
+    <div className='flex flex-col items-center justify-center text-muted-foreground gap-2'>
+      <TriangleAlertIcon className='h-6 w-6' />
+      <p>오류가 발생했습니다. 잠시 후 다시 시도해주세요.</p>
+    </div>
+  );
+}
+```
+
+### 7.6. 포스트들을 모아놓은 컴포넌트 만들기
+
+- `/src/components/post/PostFeed.tsx` 배치해서 `디자인 보기`
+
+```tsx
+import FallBack from '../FallBack';
+
+function PostFeed() {
+  return <FallBack />;
+  return <div>PostFeed</div>;
+}
+
+export default PostFeed;
+```
+
+### 7.6. 로딩중 표현 공용 컴포넌트 만들기
+
+- `/src/components/Loader.tsx` 파일 생성
+- PostFeed 에 출력시켜보기
+
+```tsx
+import FallBack from '../FallBack';
+import Loader from '../Loader';
+
+function PostFeed() {
+  return <Loader />;
+  return <FallBack />;
+  return <div>PostFeed</div>;
+}
+
+export default PostFeed;
+```
+
+### 7.7. 포스트 리스트 출력하기
+
+- `/src/components/post/PostFeed.tsx`
+
+```tsx
+'use client';
+import { usePostsData } from '@/hooks/queries/usePostsData';
+import FallBack from '../FallBack';
+import Loader from '../Loader';
+
+export default function PostFeed() {
+  const { data, error, isPending } = usePostsData();
+  if (error) return <FallBack />;
+  if (isPending) return <Loader />;
+  return (
+    <div className='flex flex-col gap-10'>
+      {data?.map(post => (
+        <div key={post.id}>
+          <div>{post.content}</div>
+          <div>{post.created_at}</div>
+          <div>{post.author_id}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+### 7.8. 포스트 리스트 컴포넌트 생성하기
+
+- 타입 추가 확장 (`/src/types/types.ts` 추가)
+
+```ts
+// 포스트와 프로필 타입 조합
+export type Post = PostEntity & { author: ProfileEntity };
+```
+
+- `/src/components/post/PostItem.tsx` 파일 생성
+
+```tsx
+import { Post, PostEntity } from '@/types/types';
+// PostEntity : 현재 전달된 타입으로는 사용자 프로필에 대한 정보 파악이 어렵다.
+// Post 타입을 별도로 조합하여 프로필 정보 타입도 활용하도록 함
+export default function PostItem(post: Post) {
+  return (
+    <div>
+      <div>{post.content}</div>
+      <div>{post.created_at}</div>
+      <div>{post.author_id}</div>
+    </div>
+  );
+}
+```
+
+### 7.9. 배치하기
+
+- `/src/components/post/PostFeed.tsx`
+
+### 7.10 시간을 변경해서 출력하기
+
+- `/src/lib/time.ts` 파일 생성
+
+```ts
+export function formatTimeAgo(time: Date | string | number) {
+  const start = new Date(time);
+  const end = new Date();
+
+  const secondDiff = Math.floor((end.getTime() - start.getTime()) / 1000);
+  if (secondDiff < 60) return '방금 전';
+
+  const minuteDiff = Math.floor(secondDiff / 60);
+  if (minuteDiff < 60) return `${minuteDiff}분 전`;
+
+  const hourDiff = Math.floor(minuteDiff / 60);
+  if (hourDiff < 24) return `${hourDiff}시간 전`;
+
+  const dayDiff = Math.floor(hourDiff / 24);
+  return `${dayDiff}일 전`;
+}
+```
+
+# 7.11. 시간을 적용하기
+
+- `/src/components/post/PostItem.tsx`
+
+```tsx
+<div className='text-muted-foreground text-sm'>
+  {formatTimeAgo(post.created_at)}
+  {/* {new Date(post.created_at).toLocaleString()} */}
+</div>
+```
+
 ## 8. 무한 스크롤
 
 ## 9. Post 편집
@@ -833,3 +1034,7 @@ npm run generate-types
 ## 10. Post 삭제
 
 ## 11. 목록 갱신
+
+```
+
+```
