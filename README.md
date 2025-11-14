@@ -38,7 +38,7 @@ export function useInfinitePostData() {
 }
 ```
 
-## 1. chche 사용하기
+## 1. cache 사용하기
 
 - `/src/components/post/PostFeed.tsx` 수정
 
@@ -135,7 +135,7 @@ export default function PostItem({ postId }: { postId: number }) {
   // 내가 만든 post 인지 확인
   const session = useSession();
   const userId = session?.user.id;
-  // 실제 쿼리로 id 를 전달해서 post를 가져오자.
+  // 실제 쿼리로 id 를 전달해서 post를 가져오자
   const {
     data: post,
     isPending,
