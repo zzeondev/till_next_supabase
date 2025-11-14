@@ -1026,15 +1026,3 @@ export function formatTimeAgo(time: Date | string | number) {
   {/* {new Date(post.created_at).toLocaleString()} */}
 </div>
 ```
-
-## 8. 무한 스크롤
-
-## 9. Post 편집
-
-## 10. Post 삭제
-
-## 11. 목록 갱신
-
-```
-
-```
