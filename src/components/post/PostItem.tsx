@@ -15,6 +15,7 @@ import { useSession } from '@/stores/session';
 import { usePostByIdData } from '@/hooks/queries/usePostByIdData';
 import Loader from '../Loader';
 import FallBack from '../FallBack';
+import LikeButton from './LikeButton';
 
 export default function PostItem({ postId }: { postId: number }) {
   // 내가 만든 post 인지 확인
@@ -94,10 +95,11 @@ export default function PostItem({ postId }: { postId: number }) {
       {/* 3. 좋아요, 댓글 버튼 */}
       <div className='flex gap-2'>
         {/* 3-1. 좋아요 버튼 */}
-        <div className='hover:bg-muted flex cursor-pointer items-center gap-2 rounded-xl border-1 p-2 px-4 text-sm'>
-          <HeartIcon className='h-4 w-4' />
-          <span>0</span>
-        </div>
+        <LikeButton
+          id={post.id}
+          likeCount={post.like_count}
+          isLiked={post.isLiked}
+        />
 
         {/* 3-2. 댓글 버튼 */}
         <div className='hover:bg-muted flex cursor-pointer items-center gap-2 rounded-xl border-1 p-2 px-4 text-sm'>
