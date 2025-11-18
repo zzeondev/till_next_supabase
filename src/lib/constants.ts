@@ -11,6 +11,8 @@ export const QUERY_KEYS = {
     all: ['posts'],
     list: ['posts', 'list'],
     byId: (postsId: number) => ['posts', 'byId', postsId],
+    // 추가됨
+    userlist: (userId: string) => ['posts', 'userList', userId],
   },
 };
 
