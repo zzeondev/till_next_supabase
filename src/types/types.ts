@@ -36,9 +36,14 @@ export type CommentTableEntity = Database['public']['Tables']['comments'];
 
 // 댓글과 프로필 타입 조합
 export type Comment = CommentEntity & {
-  author: ProfileEntity;  
+  author: ProfileEntity;
 };
 
+// 중첩 댓글 타입
+export type NestedComment = Comment & {
+  parentComment?: Comment;
+  children: NestedComment[]; // 재귀구조 패턴
+};
 
 export type UseMutationCallback = {
   onError?: (error: Error) => void;
