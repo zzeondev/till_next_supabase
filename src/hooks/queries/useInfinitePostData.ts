@@ -4,20 +4,25 @@ import { fetchPosts } from '@/apis/post';
 import { useSession } from '@/stores/session';
 const PAGE_SIZE = 5;
 
-// authorId?: string - 포스트의 작성자 아이디 매개변수 전달
+// authorId?: string -포스트의 작성자 아이디 매개변수 전달
 export function useInfinitePostData(authorId?: string) {
   const queryClient = useQueryClient();
   const session = useSession();
 
+  // 세션이 준비되었는지 파악함
+  const userId = session?.user.id;
+
   return useInfiniteQuery({
-    // 보관하고 있는 캐시가 같이 업데이트
-    // 구분해주자
     // queryKey: QUERY_KEYS.posts.list,
     queryKey: !authorId
       ? QUERY_KEYS.posts.list
       : QUERY_KEYS.posts.userlist(authorId),
 
+    enabled: Boolean(userId), // 사용자 아이디에 대한 유무
+
     queryFn: async ({ pageParam }) => {
+      if (!userId) throw new Error('사용자 정보가 없습니다.');
+
       const from = pageParam * PAGE_SIZE;
       const to = from + PAGE_SIZE - 1;
 
@@ -39,7 +44,6 @@ export function useInfinitePostData(authorId?: string) {
       if (lastPage.length < PAGE_SIZE) return undefined;
       return allPages.length;
     },
-    //옵션들 : stale 상태로 안감
     staleTime: Infinity,
   });
 }
