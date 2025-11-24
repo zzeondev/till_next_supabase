@@ -1,203 +1,57 @@
-# 버그 개선
+# 회원 탈퇴
 
-## 1. 프로필 수정 시 오류
+## 1. 기초 기능 구성
 
-### 1.1. 사용자 아바타 이미지 변경 적용 오류
+### 1.1. 회원탈퇴 버튼 만들기
 
-- `/src/hooks/mutations/profile/useUpdateProfile.ts` 업데이트 필요
-
-```ts
-import { updateProfile } from '@/apis/profile';
-import { QUERY_KEYS } from '@/lib/constants';
-import { Post, ProfileEntity, UseMutationCallback } from '@/types/types';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-
-export function useUpdateProfile(callback?: UseMutationCallback) {
-  // 서버의 상태
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: updateProfile,
-    // 결과값이 매개변수에 담겨짐
-    onSuccess: updatedProfile => {
-      if (callback?.onSuccess) callback.onSuccess();
-
-      // 캐시를 업데이트 해줌 : 리랜더링
-      queryClient.setQueryData<ProfileEntity>(
-        QUERY_KEYS.profile.byId(updatedProfile.id),
-        updatedProfile
-      );
-      // 추가로 postItem 의 avatar 이미지도 캐시 변경해야 함
-      // 피드/디테일 게시글 캐시에 남아있는 작성자 정보도 동시에 갱신한다.
-      queryClient
-        .getQueryCache()
-        .findAll({ queryKey: QUERY_KEYS.posts.all })
-        .forEach(query => {
-          if (query.queryKey[1] !== 'byId') return;
-          const cachedPost = query.state.data as Post | undefined;
-          if (!cachedPost || cachedPost.author.id !== updatedProfile.id) return;
-
-          queryClient.setQueryData<Post>(query.queryKey, {
-            ...cachedPost,
-            author: {
-              ...cachedPost.author,
-              ...updatedProfile,
-            },
-          });
-        });
-    },
-
-    onError: error => {
-      if (callback?.onError) callback.onError(error);
-    },
-  });
-}
-```
-
-### 1.2. 닉네임 또는 자기소개를 수정하고 적용 시 `아바타이미지 초기화`
-
-- `/src/apis/profile.ts` 업데이트
-
-```ts
-import supabase from '@/lib/supabase/client';
-import { getRandomNickName } from '@/lib/utils';
-import { deleteImagesInPath, uploadImage } from './image';
-
-// 1. 회원정보 읽기
-// 회원의 ID 를 전달받아서 정보 데이터 반환함
-// 비동기 작업이므로 asyn 적용
-export async function fetchProfile(userId: string) {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .single();
-
-  if (error) throw error;
-  return data;
-}
-
-// 2. 사용자 정보 생성하기
-export async function createProfile(userId: string) {
-  const { data, error } = await supabase
-    .from('profiles')
-    .insert({ id: userId, nickname: getRandomNickName() })
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
-}
-
-// 3. 프로필 업데이트
-export async function updateProfile({
-  userId,
-  nickname,
-  bio,
-  avatarImageFile,
-}: {
-  userId: string;
-  nickname: string;
-  bio: string;
-  avatarImageFile?: File;
-}) {
-  // 1. 기존 아바타 이미지 삭제
-  if (avatarImageFile) {
-    await deleteImagesInPath(`${userId}/avatar`);
-  }
-
-  // 업로드 된 url 을 보관할 변수
-  let newAvatarUrl: string | null = null;
-
-  // 2. 새로운 아바타 이미지 업로드
-  if (avatarImageFile) {
-    // 확장자 알아내기
-    const fileExtension = avatarImageFile.name.split('.').pop() || 'webp';
-    // 업로드될 이름이 중복되면 안되므로
-    const fileName = `${Date.now()}-${crypto.randomUUID()}.${fileExtension}`;
-    // 파일이 업로드 될 경로생성
-    const filePath = `${userId}/avatar/${fileName}`;
-    // 실제 파일 업로드
-    newAvatarUrl = await uploadImage({ file: avatarImageFile, filePath });
-  }
-
-  // 3. 프로필 테이블 업데이트 작업
-
-  // 텍스트 필드만 바뀔 때는 기존 avatar_url을 그대로 두기 위한 payload 구성.
-  const payload: {
-    nickname: string;
-    bio?: string;
-    avatar_url?: string | null;
-  } = { nickname, bio };
-
-  if (avatarImageFile) {
-    // 이미지가 새로 업로드된 경우에만 avatar_url을 덮어쓴다.
-    payload.avatar_url = newAvatarUrl;
-  }
-
-  const { data, error } = await supabase
-    .from('profiles')
-    // .update({ nickname, bio, avatar_url: newAvatarUrl })
-    .update(payload)
-    .eq('id', userId)
-    .select()
-    .single();
-
-  if (error) throw error;
-
-  return data;
-}
-```
-
-## 2. 첫 로그인 직후에 리다이렉트 시 목록 오류
-
-### 2.1. 해결책
-
-- `SessionProvider` 가 `Mount` 되면 `supabase.auth.getSession()` 을 활용 `즉시 현재 Session 을 담아줌`
-- 포스트쿼리 훅에서 `userId` 가 준비 될 때 까지 호출을 지연시킴
-
-### 2.2. 업데이트
-
-- `src/components/providers/SessionProvider.tsx` 업데이트
+- `/src/components/profile/DeleteProfileButton.tsx` 파일 생성
 
 ```tsx
-// SessionProvider 가 마운트시 즉시 세션을 동기화함.
-useEffect(() => {
-  // 이미 사용자가 로그인 해서 잘 사용하고 있다면
-  // 아래는 호출할 필요가 없어요.
-  let isMounted = true;
+'use client';
+import { Button } from '@/components/ui/button';
+import { useOpenAlertModal } from '@/stores/alertModalStore';
 
-  const syncSession = async () => {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+export default function DeleteProfileButton() {
+  const openAlertModal = useOpenAlertModal();
 
-    if (!isMounted) return;
-    isMounted = false;
-    setSession(session);
+  const handleClick = () => {
+    openAlertModal({
+      title: '회원 탈퇴',
+      description: '정말로 회원을 탈퇴하시겠습니까?',
+      onPositive: () => {
+        console.log('회원탈퇴');
+      },
+    });
   };
 
-  syncSession();
+  return (
+    <Button
+      variant='destructive'
+      className='cursor-pointer'
+      onClick={handleClick}
+    >
+      회원 탈퇴
+    </Button>
+  );
+}
+```
 
-  // 사용자가 로그인, 로그아웃을 하면 자동실행 이벤트 핸들러
-  const {
-    data: { subscription },
-  } = supabase.auth.onAuthStateChange((event, session) => {
-    setSession(session);
-    // console.log('로그아웃 또는 로그인시의 상태 체크 : ', event);
-    // 로그아웃 진행시에는
-    if (event === 'SIGNED_OUT') {
-      // redirect('/signin');
-      router.push('/signin');
-    }
-  });
+### 1.2. 컴포넌트 출력
 
-  // 클린업 함수
-  return () => {
-    isMounted = false;
-    subscription.unsubscribe(); // 이벤트 감시 해제
-  };
-}, [session, router]);
+- `/src/components/profile/ProfileInfo.tsx`
+
+```tsx
+{
+  /* 프로필 수정 */
+}
+{
+  isMine && (
+    <div>
+      <EditProfileButton />
+      <DeleteProfileButton />
+    </div>
+  );
+}
 ```
 
 - 전체 코드
@@ -205,171 +59,280 @@ useEffect(() => {
 ```tsx
 'use client';
 import useProfileData from '@/hooks/queries/useProfileData';
-import supabase from '@/lib/supabase/client';
-import { useSession, useSessionLoaded, useSetSession } from '@/stores/session';
-import { useRouter } from 'next/navigation';
+import FallBack from '../FallBack';
+import Loader from '../Loader';
+import defaultAvatar from '/public/assets/icons/default-avatar.jpg';
+import Image from 'next/image';
 import { useEffect } from 'react';
-import { GlobalLoading } from '../GlobalLoading';
+import { Edit } from 'lucide-react';
+import EditProfileButton from './EditProfileButton';
+import { useSession } from '@/stores/session';
+import DeleteProfileButton from './DeleteProfileButton';
 
-interface SessionProviderProps {
-  children: React.ReactNode;
-}
-export default function SessionProvider({ children }: SessionProviderProps) {
-  const router = useRouter();
-
+export default function ProfileInfo({ userId }: { userId: string }) {
+  // 세션 정보 참조하기 (zustand 보관됨)
   const session = useSession();
-  const setSession = useSetSession();
-  const isSessionLoaded = useSessionLoaded();
-  const { data: profile, isLoading: isProfileLoading } = useProfileData(
-    session?.user.id
-  );
+  // 본인인지를 검증
+  const isMine = session?.user.id === userId;
 
-  // SessionProvider 가 마운트시 즉시 세션을 동기화함.
+  const {
+    data: profile,
+    error: fetchProfileError,
+    isPending: isFetchingProfile,
+  } = useProfileData(userId);
+
   useEffect(() => {
-    // 이미 사용자가 로그인 해서 잘 사용하고 있다면
-    // 아래는 호출할 필요가 없어요.
-    let isMounted = true;
+    window.scrollTo({ top: 0 });
+  }, []);
 
-    const syncSession = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+  if (fetchProfileError) return <FallBack />;
+  if (isFetchingProfile) return <Loader />;
 
-      if (!isMounted) return;
-      isMounted = false;
-      setSession(session);
-    };
+  return (
+    <div className='flex flex-col items-center  justify-center gap-5'>
+      <Image
+        src={profile?.avatar_url || defaultAvatar}
+        alt={`${profile?.nickname}의 프로필 이미지`}
+        className='h-30 w-30 rounded-full object-cover'
+        width={120}
+        height={120}
+      />
+      <div className='flex flex-col items-center gap-2'>
+        <div className='text-l font-bold'>{profile?.nickname}</div>
+        <div className=' text-muted-foreground'>{profile?.bio}</div>
+        <div className='text-muted-foreground'>{profile?.role}</div>
+      </div>
 
-    syncSession();
+      {/* 프로필 수정 */}
+      {isMine && (
+        <div>
+          <EditProfileButton />
+          <DeleteProfileButton />
+        </div>
+      )}
+    </div>
+  );
+}
+```
 
-    // 사용자가 로그인, 로그아웃을 하면 자동실행 이벤트 핸들러
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      setSession(session);
-      // console.log('로그아웃 또는 로그인시의 상태 체크 : ', event);
-      // 로그아웃 진행시에는
-      if (event === 'SIGNED_OUT') {
-        // redirect('/signin');
-        router.push('/signin');
-      }
+## 2. Supabase 회원 탈퇴 적용하기
+
+- Next.js 에서만 가능함
+- Supabase 의 Role Key 즉, `관리자 키`가 필요함
+
+### 2.1. `.env` 중요함
+
+- `Next_PUBLIC_` 접두어는 웹브라우저에 노출될 소지 있음
+- `SUPABASE_SERVICE_ROLE` 없으면 Next.js 서버에서만 활용됨
+
+```txt
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE=
+NEXT_PUBLIC_APP_URL=
+```
+
+### 2.2. `/src/app/api/기능명/route.ts` 폴더 및 파일의 이해
+
+- `/src/app/페이지폴더명/page.tsx` 는 웹브라우저 경로 및 파일명
+- `SERVICE ROLE 키`는 서버 전용으로 `숨겨야 함`
+- `/src/app/api 폴더명` 은 약속되어있음
+- `/src/app/api/기능명/route.ts 파일명` 은 약속되어있음
+
+## 3. 탈퇴기능 작성하기
+
+### 3.1. 버튼 기능 구현하기
+
+- `/src/components/profile/DeleteProfileButton.tsx`
+
+```tsx
+const router = useRouter();
+const setSession = useSetSession();
+const deleteProfile = async () => {
+  try {
+    // src/app/api/profile/delete/route.ts 라우트 API 실행
+    const response = await fetch('/api/profile/delete', {
+      method: 'POST',
     });
 
-    // 클린업 함수
-    return () => {
-      isMounted = false;
-      subscription.unsubscribe(); // 이벤트 감시 해제
-    };
-  }, [session, router]);
+    if (!response.ok) {
+      const { message } = await response.json();
+      throw new Error(message);
+    }
+    await signOut();
+    setSession(null);
+    router.replace('/signin');
+    router.refresh();
+  } catch (error) {
+    console.log(error);
+    openAlertModal({
+      title: '회원 탈퇴 실패',
+      description: '잠시 후 다시 시도해주세요.',
+    });
+  }
+};
 
-  if (!isSessionLoaded) return <GlobalLoading />;
-  if (isProfileLoading) return <GlobalLoading />;
-  return <div>{children}</div>;
+const handleClick = () => {
+  openAlertModal({
+    title: '회원 탈퇴',
+    description: '정말로 회원을 탈퇴하시겠습니까?',
+    onPositive: deleteProfile,
+  });
+};
+```
+
+### 3.2. API 만들기
+
+- `/src/lib/supabase/admin.ts` 파일 생성
+
+```ts
+import { Database } from '@/types/database.types';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE;
+
+export function createAdminClient() {
+  if (!supabaseUrl || !serviceRoleKey) {
+    throw new Error('Supabase admin credentials are missing.');
+  }
+
+  return createClient<Database>(supabaseUrl, serviceRoleKey);
 }
 ```
 
-### 2.3. 업데이트
+- 위의 파일을 활용해서 Admin 에서 활용할 API 를 생성해보자
+- `/src/app/api/profile/delete` 폴더 생성
+- `/src/app/api/profile/delete/route.ts` 파일 생성
 
-- `src/hooks/queries/useInfinitePostsData.ts` 업데이트
+```ts
+import { createAdminClient } from '@/lib/supabase/admin';
+import { createClient as createServerClient } from '@/lib/supabase/server';
+import { NextResponse } from 'next/server';
 
-```tsx
-// 세션이 준비되었는지 파악한다.
-const session = useSession();
-const userId = session?.user.id;
+export async function POST() {
+  try {
+    const supabase = await createServerClient();
+    const {
+      data: { user },
+      error: sessionError,
+    } = await supabase.auth.getUser();
+
+    if (sessionError || !user) {
+      return NextResponse.json(
+        { message: '로그인이 필요합니다.' },
+        { status: 401 }
+      );
+    }
+
+    const admin = createAdminClient();
+    const { error: deleteProfileError } = await admin
+      .from('profiles')
+      .delete()
+      .eq('id', user.id);
+
+    if (deleteProfileError && deleteProfileError.code !== 'PGRST116') {
+      console.error(deleteProfileError);
+      return NextResponse.json(
+        { message: '프로필 삭제에 실패했습니다.' },
+        { status: 500 }
+      );
+    }
+
+    const { error: deleteUserError } = await admin.auth.admin.deleteUser(
+      user.id
+    );
+
+    if (deleteUserError) {
+      console.error(deleteUserError);
+      return NextResponse.json(
+        { message: '회원 탈퇴 처리에 실패했습니다.' },
+        { status: 500 }
+      );
+    }
+
+    await supabase.auth.signOut();
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json(
+      { message: '서버 오류가 발생했습니다.' },
+      { status: 500 }
+    );
+  }
+}
 ```
 
-```tsx
- enabled: Boolean(userId), // 사용자 아이디에 대한 유무
-```
+### 4. 적용 및 테스트 하기
+
+- `/src/components/profile/DeleteProfileButton.tsx` 업데이트
 
 ```tsx
-queryFn: async ({ pageParam }) => {
-      if (!userId) throw new Error('사용자 정보가 없습니다.');
+//   router.refresh();
+if (typeof window !== 'undefined') {
+  window.location.assign('/signin');
+}
 ```
 
 - 전체 코드
 
 ```tsx
-import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
-import { QUERY_KEYS } from '@/lib/constants';
-import { fetchPosts } from '@/apis/post';
-import { useSession } from '@/stores/session';
-const PAGE_SIZE = 5;
+'use client';
+import { signOut } from '@/apis/auth';
+import { Button } from '@/components/ui/button';
+import { useOpenAlertModal } from '@/stores/alertModalStore';
+import { useSetSession } from '@/stores/session';
+import { useRouter } from 'next/navigation';
 
-// authorId?: string -포스트의 작성자 아이디 매개변수 전달
-export function useInfinitePostData(authorId?: string) {
-  const queryClient = useQueryClient();
-  const session = useSession();
+export default function DeleteProfileButton() {
+  const openAlertModal = useOpenAlertModal();
 
-  // 세션이 준비되었는지 파악함
-  const userId = session?.user.id;
-
-  return useInfiniteQuery({
-    // queryKey: QUERY_KEYS.posts.list,
-    queryKey: !authorId
-      ? QUERY_KEYS.posts.list
-      : QUERY_KEYS.posts.userlist(authorId),
-
-    enabled: Boolean(userId), // 사용자 아이디에 대한 유무
-
-    queryFn: async ({ pageParam }) => {
-      if (!userId) throw new Error('사용자 정보가 없습니다.');
-
-      const from = pageParam * PAGE_SIZE;
-      const to = from + PAGE_SIZE - 1;
-
-      // authorId - 포스트 작성자의 아이디도 전달
-      const posts = await fetchPosts({
-        from,
-        to,
-        userId: session!.user.id,
-        authorId,
+  const router = useRouter();
+  const setSession = useSetSession();
+  const deleteProfile = async () => {
+    try {
+      // src/app/api/profile/delete/route.ts 라우트 API 실행
+      const response = await fetch('/api/profile/delete', {
+        method: 'POST',
       });
 
-      posts.forEach(post => {
-        queryClient.setQueryData(QUERY_KEYS.posts.byId(post.id), post);
+      if (!response.ok) {
+        const { message } = await response.json();
+        throw new Error(message);
+      }
+      await signOut();
+      setSession(null);
+      router.replace('/signin');
+      //   router.refresh();
+      if (typeof window !== 'undefined') {
+        window.location.assign('/signin');
+      }
+    } catch (error) {
+      console.log(error);
+      openAlertModal({
+        title: '회원 탈퇴 실패',
+        description: '잠시 후 다시 시도해주세요.',
       });
-      return posts.map(post => post.id);
-    },
-    initialPageParam: 0,
-    getNextPageParam: (lastPage, allPages) => {
-      if (lastPage.length < PAGE_SIZE) return undefined;
-      return allPages.length;
-    },
-    staleTime: Infinity,
-  });
-}
-```
+    }
+  };
 
-### 2.4. 업데이트
+  const handleClick = () => {
+    openAlertModal({
+      title: '회원 탈퇴',
+      description: '정말로 회원을 탈퇴하시겠습니까?',
+      onPositive: deleteProfile,
+    });
+  };
 
-- `src/hooks/quieries/usePostByIdData.ts` 업데이트
-
-```ts
-import { useQuery } from '@tanstack/react-query';
-import { QUERY_KEYS } from '@/lib/constants';
-import { fetchPostById } from '@/apis/post';
-import { useSession } from '@/stores/session';
-
-// 매겨변수의 순서가 중요하므로
-export function usePostByIdData({
-  postId,
-  type,
-}: {
-  postId: number;
-  type: 'FEED' | 'DETAIL';
-}) {
-  const session = useSession();
-
-  // 사용자 검증
-  const userId = session?.user.id;
-
-  return useQuery({
-    queryKey: QUERY_KEYS.posts.byId(postId),
-    // like 기능 업데이트
-    queryFn: () => fetchPostById({ postId, userId: session!.user.id }),
-    // 아래 업데이트
-    enabled: type === 'FEED' ? false : Boolean(userId),
-  });
+  return (
+    <Button
+      variant='destructive'
+      className='cursor-pointer'
+      onClick={handleClick}
+    >
+      회원 탈퇴
+    </Button>
+  );
 }
 ```
